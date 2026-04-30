@@ -446,60 +446,60 @@ const TEMPLATES = [
   { schedule:[
     {day:"Mon",lift:"Push",  cardio:"Quarters"},
     {day:"Tue",lift:"Pull",  cardio:"Elliptical"},
-    {day:"Wed",lift:"Off",   cardio:"Off"},
+    {day:"Wed",lift:null,    cardio:null},
     {day:"Thu",lift:"Arms",  cardio:"Quarters"},
     {day:"Fri",lift:"Push",  cardio:"Incline"},
-    {day:"Sat",lift:"Arms",  cardio:"Off"},
-    {day:"Sun",lift:"Pull",  cardio:"Off"},
+    {day:"Sat",lift:"Arms",  cardio:null},
+    {day:"Sun",lift:"Pull",  cardio:null},
   ]},
   { schedule:[
     {day:"Mon",lift:"Push",  cardio:"Quarters"},
     {day:"Tue",lift:"Pull",  cardio:"Elliptical"},
-    {day:"Wed",lift:"Arms",  cardio:"Off"},
-    {day:"Thu",lift:"Off",   cardio:"Quarters"},
+    {day:"Wed",lift:"Arms",  cardio:null},
+    {day:"Thu",lift:null,    cardio:"Quarters"},
     {day:"Fri",lift:"Max",   cardio:"Incline"},
-    {day:"Sat",lift:"Arms",  cardio:"Off"},
-    {day:"Sun",lift:"Pull",  cardio:"Off"},
+    {day:"Sat",lift:"Arms",  cardio:null},
+    {day:"Sun",lift:"Pull",  cardio:null},
   ]},
   { schedule:[
     {day:"Mon",lift:"Push",  cardio:"Quarters"},
     {day:"Tue",lift:"Pull",  cardio:"Elliptical"},
-    {day:"Wed",lift:"Off",   cardio:"Off"},
+    {day:"Wed",lift:null,    cardio:null},
     {day:"Thu",lift:"Arms",  cardio:"Quarters"},
     {day:"Fri",lift:"Push",  cardio:"Incline"},
-    {day:"Sat",lift:"Arms",  cardio:"Off"},
-    {day:"Sun",lift:"Pull",  cardio:"Off"},
+    {day:"Sat",lift:"Arms",  cardio:null},
+    {day:"Sun",lift:"Pull",  cardio:null},
   ]},
   { schedule:[
     {day:"Mon",lift:"Push",  cardio:"Quarters"},
     {day:"Tue",lift:"Pull",  cardio:"Elliptical"},
-    {day:"Wed",lift:"Arms",  cardio:"Off"},
-    {day:"Thu",lift:"Off",   cardio:"Quarters"},
+    {day:"Wed",lift:"Arms",  cardio:null},
+    {day:"Thu",lift:null,    cardio:"Quarters"},
     {day:"Fri",lift:"Max",   cardio:"Incline"},
-    {day:"Sat",lift:"Arms",  cardio:"Off"},
-    {day:"Sun",lift:"Pull",  cardio:"Off"},
+    {day:"Sat",lift:"Arms",  cardio:null},
+    {day:"Sun",lift:"Pull",  cardio:null},
   ]},
   { schedule:[
     {day:"Mon",lift:"Push",  cardio:"Quarters"},
     {day:"Tue",lift:"Pull",  cardio:"Elliptical"},
-    {day:"Wed",lift:"Off",   cardio:"Off"},
+    {day:"Wed",lift:null,    cardio:null},
     {day:"Thu",lift:"Arms",  cardio:"Quarters"},
     {day:"Fri",lift:"Push",  cardio:"Incline"},
-    {day:"Sat",lift:"Arms",  cardio:"Off"},
-    {day:"Sun",lift:"Pull",  cardio:"Off"},
+    {day:"Sat",lift:"Arms",  cardio:null},
+    {day:"Sun",lift:"Pull",  cardio:null},
   ]},
   { schedule:[
     {day:"Mon",lift:"Push",  cardio:"Quarters"},
     {day:"Tue",lift:"Pull",  cardio:"Elliptical"},
-    {day:"Wed",lift:"Arms",  cardio:"Off"},
-    {day:"Thu",lift:"Off",   cardio:"Quarters"},
+    {day:"Wed",lift:"Arms",  cardio:null},
+    {day:"Thu",lift:null,    cardio:"Quarters"},
     {day:"Fri",lift:"Max",   cardio:"Incline"},
-    {day:"Sat",lift:"Arms",  cardio:"Off"},
-    {day:"Sun",lift:"Pull",  cardio:"Off"},
+    {day:"Sat",lift:"Arms",  cardio:null},
+    {day:"Sun",lift:"Pull",  cardio:null},
   ]},
 ];
 
-const STORAGE_KEY = "workout-tracker-v2";
+const STORAGE_KEY = "workout-tracker-v4";
 
 function buildDefault() {
   return TEMPLATES.map((t, wi) => ({
@@ -559,14 +559,12 @@ function setSaveStatus(s) {
 
 // ── Scoring ──────────────────────────────────────────────────────────────────
 function dayScore(day) {
-  const liftOff   = day.lift   === "Off";
-  const cardioOff = day.cardio === "Off";
-  return (day.fasting    ? 1 : 0)
-       + (liftOff   || day.lift_done   ? 1 : 0)
-       + (cardioOff || day.cardio_done ? 1 : 0)
-       + (day.G ? 1 : 0)
-       + (day.A ? 1 : 0)
-       + (day.S ? 1 : 0);
+  return (day.fasting    === true ? 1 : 0)
+       + (day.lift_done  === true ? 1 : 0)
+       + (day.cardio_done=== true ? 1 : 0)
+       + (day.G          === true ? 1 : 0)
+       + (day.A          === true ? 1 : 0)
+       + (day.S          === true ? 1 : 0);
 }
 function weekScore(week) { return week.days.reduce((s, d) => s + dayScore(d), 0); }
 function totalScore()    { return state.weeks.reduce((s, w) => s + weekScore(w), 0); }
@@ -579,7 +577,7 @@ function scoreColor(score, max) {
 
 function liftClass(lift) {
   return { Push:"lift-push", Pull:"lift-pull", Arms:"lift-arms",
-           Max:"lift-max",   Off:"lift-off" }[lift] || "lift-off";
+           Max:"lift-max" }[lift] || "lift-off";
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -642,13 +640,13 @@ function buildWeekCard(wi) {
 
   const rows = week.days.map((day, di) => {
     const pts     = dayScore(day);
-    const liftOff   = day.lift   === "Off";
-    const cardioOff = day.cardio === "Off";
+    const liftOff   = day.lift   == null;
+    const cardioOff = day.cardio == null;
     const ptsClass  = pts === 6 ? "pts-max" : pts >= 4 ? "pts-good" : "pts-low";
 
-    const cbFast   = cb(day.fasting,    "fast",   wi, di, "fasting",    false);
-    const cbLift   = cb(liftOff || day.lift_done,   "lift",   wi, di, "lift_done",   liftOff);
-    const cbCardio = cb(cardioOff || day.cardio_done,"cardio", wi, di, "cardio_done", cardioOff);
+    const cbFast   = cb(day.fasting,     "fast",   wi, di, "fasting",    false);
+    const cbLift   = cb(day.lift_done,   "lift",   wi, di, "lift_done",  false);
+    const cbCardio = cb(day.cardio_done, "cardio", wi, di, "cardio_done",false);
     const cbG      = cb(day.G,  "g",  wi, di, "G",  false);
     const cbA      = cb(day.A,  "a",  wi, di, "A",  false);
     const cbS      = cb(day.S,  "s",  wi, di, "S",  false);
@@ -658,9 +656,9 @@ function buildWeekCard(wi) {
     <tr>
       <td class="left"><span class="day-name">${day.day}</span></td>
       <td>${cbFast}</td>
-      <td class="left"><span class="lift-badge ${liftClass(day.lift)}">${day.lift}</span></td>
+      <td class="left"><span class="lift-badge ${liftClass(day.lift)}">${day.lift === "Off" ? "Choice?" : day.lift}</span></td>
       <td>${cbLift}</td>
-      <td class="left"><span class="cardio-text">${day.cardio}</span></td>
+      <td class="left"><span class="cardio-text">${day.cardio === "Off" ? "Choice?" : day.cardio}</span></td>
       <td>${cbCardio}</td>
       <td>${cbG}</td>
       <td>${cbA}</td>
@@ -774,8 +772,8 @@ function exportCSV() {
   state.weeks.forEach((week, wi) => {
     const ws = weekScore(week);
     week.days.forEach((day, di) => {
-      const liftOff   = day.lift   === "Off";
-      const cardioOff = day.cardio === "Off";
+      const liftOff   = day.lift   == null;
+      const cardioOff = day.cardio == null;
       const dayNum    = wi * 7 + di + 1;
       rows.push([
         `Week ${wi+1}`,
