@@ -42,6 +42,16 @@
     <div class="maxgrid" id="maxGrid"></div>
   </section>
 
+  <section class="block" id="bodyweight">
+    <h2>Body weight</h2>
+    <p class="sub">Weigh in once a week, on the same day and at the same time, ideally first thing in the morning. Pick any week in the history to view or fix that week's entry.</p>
+    <div class="maxgrid">
+      <div class="maxc"><label for="bwIn">This week</label><div class="inp"><input type="number" inputmode="decimal" min="0" step="0.1" id="bwIn" placeholder="lb" aria-label="Body weight this week, lb"><span class="x">lb</span></div><div class="e1 num" id="bwDelta"></div></div>
+      <div id="bwStats" style="display:contents"></div>
+    </div>
+    <div class="bwhist" id="bwHist"></div>
+  </section>
+
   <section class="block">
     <h2>Progress</h2>
     <p class="sub">Last 10 weeks. Volume is weight × reps × sets for every logged exercise.</p>
@@ -49,6 +59,7 @@
       <div class="chart"><div class="ch"><h3>Weekly volume</h3></div><div id="volChart"></div></div>
       <div class="chart"><div class="ch"><h3>Est. 1RM</h3><select id="liftSel" aria-label="Lift"></select></div><div id="maxChart"></div></div>
       <div class="chart"><div class="ch"><h3>Sessions done</h3></div><div id="compChart"></div></div>
+      <div class="chart"><div class="ch"><h3>Body weight</h3></div><div id="bwChart"></div></div>
     </div>
   </section>
 

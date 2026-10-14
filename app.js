@@ -136,21 +136,47 @@ function renderCharts(){
   $("compChart").innerHTML=comp.some(v=>v[1])?bars(comp.map(c=>[c[0],c[1]]),v=>String(Math.round(v*10)/10),"sessions").replace(/>(\d)\.\d+</g,">$1<"):`<div class="empty">Check off every exercise on a day to count it as a full session (6 per week).</div>`;
   const lift=$("liftSel").value||"bench";const bw=BW.has(lift);
   const pts=lw.map(([k,w],i)=>{const m=w&&w.maxes&&w.maxes[lift];const v=m?(bw?(+m.r||0):e1rm(+m.w,+m.r)):0;return [k,v,i]}).filter(p=>p[1]);
-  if(!pts.length){$("maxChart").innerHTML=`<div class="empty">Enter a weekly max for this lift to start its trend line.</div>`;return}
+  $("maxChart").innerHTML=pts.length?trend(lw,pts,bw?" reps":" lb","Estimated max by week"):`<div class="empty">Enter a weekly max for this lift to start its trend line.</div>`;
+  const bpts=lw.map(([k,w],i)=>[k,bwOf(w),i]).filter(p=>p[1]);
+  $("bwChart").innerHTML=bpts.length?trend(lw,bpts," lb","Body weight by week"):`<div class="empty">Log a weekly weigh-in and the trend line shows up here.</div>`;
+}
+// Line chart over the weeks in lw; pts are [weekKey, value, index into lw].
+function trend(lw,pts,unit,label){
   const vw=360,vh=170,pl=38,pb=22,pt=12,n=lw.length;let lo=Math.min(...pts.map(p=>p[1])),hi=Math.max(...pts.map(p=>p[1]));
   const pad=Math.max(5,Math.round((hi-lo)*.2));lo=Math.max(0,Math.floor((lo-pad)/5)*5);hi=Math.ceil((hi+pad)/5)*5;
   const X=i=>pl+(vw-pl-12)*(n===1?.5:i/(n-1)),Y=v=>pt+(vh-pt-pb)*(1-(v-lo)/(hi-lo||1));
-  let s=`<svg viewBox="0 0 ${vw} ${vh}" role="img" aria-label="Estimated max by week">`;
+  let s=`<svg viewBox="0 0 ${vw} ${vh}" role="img" aria-label="${label}">`;
   for(let t=0;t<=4;t++){const v=lo+(hi-lo)*t/4,y=Y(v);s+=`<line x1="${pl}" x2="${vw-4}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl-5}" y="${y+3}" text-anchor="end">${Math.round(v)}</text>`}
   lw.forEach(([k],i)=>{if(i%3===(n-1)%3)s+=`<text x="${X(i)}" y="${vh-6}" text-anchor="middle">${fmt(parse(k))}</text>`});
   if(pts.length>1){const dpath=pts.map((p,j)=>(j?"L":"M")+X(p[2]).toFixed(1)+","+Y(p[1]).toFixed(1)).join("");
     s+=`<path d="${dpath} L${X(pts[pts.length-1][2]).toFixed(1)},${vh-pb} L${X(pts[0][2]).toFixed(1)},${vh-pb}Z" fill="var(--accent)" opacity=".12"/><path d="${dpath}" fill="none" stroke="var(--accent)" stroke-width="2"/>`}
-  pts.forEach((p,j)=>{const last=j===pts.length-1;s+=`<circle cx="${X(p[2])}" cy="${Y(p[1])}" r="${last?4.5:3}" fill="${last?"var(--accent)":"var(--surface)"}" stroke="var(--accent)" stroke-width="2"><title>${fmt(parse(p[0]))}: ${p[1]}${bw?" reps":" lb"}</title></circle>`;
+  pts.forEach((p,j)=>{const last=j===pts.length-1;s+=`<circle cx="${X(p[2])}" cy="${Y(p[1])}" r="${last?4.5:3}" fill="${last?"var(--accent)":"var(--surface)"}" stroke="var(--accent)" stroke-width="2"><title>${fmt(parse(p[0]))}: ${p[1]}${unit}</title></circle>`;
     if(last)s+=`<text x="${Math.min(X(p[2]),vw-24)}" y="${Y(p[1])-9}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${p[1]}</text>`});
-  $("maxChart").innerHTML=s+"</svg>";
+  return s+"</svg>";
 }
-function renderSide(){renderStrip();renderMeta();renderCharts()}
-function renderAll(){renderStrip();renderDay();renderMaxes();renderCharts()}
+
+/* body weight: one weigh-in per week, stored as w.bw (lb) so it syncs and backs up with the week */
+const bwOf=w=>(w&&+w.bw)||0;
+const r1=v=>Math.round(v*10)/10;
+const sgn=v=>(v>0?"+":v<0?"−":"±")+Math.abs(r1(v));
+function bwLog(){return Object.keys(weeks).sort().filter(k=>bwOf(weeks[k])).map(k=>[k,bwOf(weeks[k])])}
+function renderBW(){const v=bwOf(weeks[wk]);$("bwIn").value=v||"";renderBWHist()}
+function renderBWHist(){
+  const log=bwLog(),cur=bwOf(weeks[wk]),prev=log.filter(([k])=>k<wk).pop();
+  $("bwDelta").textContent=cur?(prev?sgn(cur-prev[1])+" lb vs "+fmt(parse(prev[0])):"First weigh-in"):(prev?"Last "+prev[1]+" lb, "+fmt(parse(prev[0])):"Not logged");
+  if(!log.length){$("bwStats").innerHTML="";$("bwHist").innerHTML=`<div class="empty">Enter this week's weight to start your history.</div>`;return}
+  const [fk,fv]=log[0],[lk,lv]=log[log.length-1],span=Math.round((parse(lk)-parse(fk))/6048e5);
+  const tile=(l,v,s)=>`<div class="maxc"><label>${l}</label><div class="bwv num">${v}</div><div class="e1">${s}</div></div>`;
+  $("bwStats").innerHTML=tile("Start",fv+" lb",fmt(parse(fk)))+tile("Latest",lv+" lb",fmt(parse(lk)))
+    +tile("Change",log.length>1?sgn(lv-fv)+" lb":"—",span?span+" week"+(span===1?"":"s"):"One weigh-in")
+    +tile("Per week",span?sgn((lv-fv)/span)+" lb":"—","Average");
+  let rows="";for(let i=log.length-1;i>=0;i--){const [k,v]=log[i];const d=i?v-log[i-1][1]:null;
+    rows+=`<tr${k===wk?' aria-current="true"':""}><td><button type="button" data-wk="${k}">${fmt(parse(k))}, ${parse(k).getFullYear()}</button></td><td class="num">${v}</td><td class="num">${d===null?"—":sgn(d)}</td></tr>`}
+  $("bwHist").innerHTML=`<table class="hist"><thead><tr><th>Week of</th><th>Weight (lb)</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderSide(){renderStrip();renderMeta();renderCharts();renderBWHist()}
+function renderAll(){renderStrip();renderDay();renderMaxes();renderBW();renderCharts()}
 
 $("liftSel").innerHTML=MAXES.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
 $("liftSel").addEventListener("change",renderCharts);
@@ -176,19 +202,23 @@ $("dayView").addEventListener("change",e=>{const t=e.target;
 $("maxGrid").addEventListener("input",e=>{const t=e.target;if(!t.dataset.m)return;const w=W();w.maxes[t.dataset.m]=w.maxes[t.dataset.m]||{};
   const v=t.value===""?null:+t.value;if(v===null)delete w.maxes[t.dataset.m][t.dataset.f];else w.maxes[t.dataset.m][t.dataset.f]=v;save()});
 $("maxGrid").addEventListener("change",renderMaxes);
+$("bwIn").addEventListener("input",e=>{const w=W();const v=+e.target.value;if(v>0)w.bw=v;else delete w.bw;save()});
+$("bwHist").addEventListener("click",e=>{const b=e.target.closest("[data-wk]");if(!b)return;wk=b.dataset.wk;renderAll();$("bwIn").focus()});
 
 /* export */
 function csv(){const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const rows=[["week_start","date","day","workout","group","exercise","target","weight_lb","reps","sets","volume_lb","done"]];
   const hrows=[["week_start","date","day","cardio","no_alcohol","no_sweets","no_coffee","notes"]];
   const mrows=[["week_start","lift","weight_lb","reps","e1rm_lb"]];
+  const brows=[["week_start","body_weight_lb","change_lb"]];let pbw=0;
   for(const k of Object.keys(weeks).sort()){const w=weeks[k];const s=parse(k);
+    const bw=bwOf(w);if(bw){brows.push([k,bw,pbw?r1(bw-pbw):""]);pbw=bw}
     for(let i=0;i<7;i++){const d=(w.days||{})[i];const date=iso(addD(s,i));
       for(const [gn,list] of PLAN[i].g)for(const e of list){const x=d&&d.ex&&d.ex[e.id];if(!x)continue;
         rows.push([k,date,DAYS[i],PLAN[i].t,gn,exName(e,x)||"(custom)",e.t,x.w,x.r,x.s,(+x.w||0)*(+x.r||0)*(+x.s||0),x.done?"yes":"no"])}
       const h=d&&d.hab||{};const note=(w.notes||{})[i];if(Object.keys(h).length||note)hrows.push([k,date,DAYS[i],h.cardio&&h.cardio!=="—"?h.cardio:"",h.noalc?"yes":"",h.nosweets?"yes":"",h.nocoffee?"yes":"",note||""])}
     for(const [mk,ml] of MAXES){const m=(w.maxes||{})[mk];if(m&&(m.w||m.r))mrows.push([k,ml,m.w,m.r,BW.has(mk)?"":e1rm(+m.w,+m.r)])}}
-  return [rows,[],["HABITS"],...hrows,[],["WEEKLY MAXES"],...mrows].map(r=>r.map(q).join(",")).join("\n")}
+  return [rows,[],["HABITS"],...hrows,[],["WEEKLY MAXES"],...mrows,[],["BODY WEIGHT"],...brows].map(r=>r.map(q).join(",")).join("\n")}
 function offer(filename,data,type){
   try{const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return}catch(e){}
   const m=document.createElement("div");m.className="modal";m.innerHTML=`<div class="box"><h3>${filename}</h3><p class="sub" style="margin:0;color:var(--muted)">Downloads aren't available here. Copy the text and paste it into a file named ${filename}.</p><textarea id="expText" readonly></textarea><div class="actions"><button class="btn primary" id="cpy">Copy</button><button class="btn" id="cls">Close</button></div></div>`;
@@ -239,7 +269,9 @@ async function pull(){
     if(!l||JSON.stringify(l)!==JSON.stringify(rd)){weeks[k]=rd;changed=true}
     dirty.delete(k);
   }
-  for(const k in weeks)if(!seen.has(k))dirty.add(k);        // weeks that only exist on this device
+  // Weeks that only exist on this device. Only edited ones (stamped with u): just viewing a week
+  // creates an empty object, and pushing that could overwrite another device's unsynced entries.
+  for(const k in weeks)if(!seen.has(k)&&weeks[k].u)dirty.add(k);
   persist();return changed;
 }
 
