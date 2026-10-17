@@ -27,18 +27,51 @@ const PLAN={
  5:{t:"Quads",k:"quad",sub:"Legs 2 · max test",g:[QUADS(true)]},
  6:{t:"Rest",k:"rest",sub:"Off",g:[]}
 };
+// Dropdown choices per muscle group, split by equipment: bw = bodyweight, mach = machine/cable, free = free weight, band = bands
+const KINDS=[["bw","Bodyweight"],["mach","Machine"],["free","Free weight"],["band","Bands"]];
 const POOLS={
- "Biceps":["Barbell curl","Bar curl","EZ-bar curl","DB curl","Hammer curl","Concentration curl","Preacher curl","Incline DB curl","Band curl","Cable curl","Mace curl","Chin-ups"],
- "Triceps":["Overhead extension","Skull crushers","Bar extension","Band pushdown","Tricep pushdown","Close-grip bench","Kickbacks","Dips","Diamond pushups","Rope overhead extension"],
- "Shoulders":["DB military press","Barbell overhead press","Arnold press","Lateral raise","Front raise","Rear delt fly","Upright row","Shrugs","Mace 360s","Mace 10-to-2","Band face pull"],
- "Abs":["Crunch","Side crunch","Leg lifts","Inverted crunch","Bicycles","Plank","Side plank","Spiderman plank","Cable crunch","Hanging knee raise","Russian twist","Mountain climbers","Ab wheel","Dead bug","V-ups"],
- "Chest":["Pushups","Wide pushups","Decline pushups","Incline pushups","Diamond pushups","Bench press","Incline bench","DB bench","Dips","Flys","DB flys","Band chest press","Cable crossover"],
- "Back":["Pullups","Chin-ups","Band row","TRX row","DB row","Barbell row","Inverted row","Band pull-apart","Lat pulldown","Seated cable row","Deadlift","Good mornings","Superman"],
- "Quads":["Squat","Front squat","DB squat","Goblet squat","Bulgarian split squat","Lunge","Walking lunge","Step-ups","Leg press","Leg extension","Leg curl","Romanian deadlift","Single-leg balance","Wall sit","Calf raise","Seated calf raise"],
- "Push / Pull":["Cable crossover","Cable chest press","Low-to-high cable fly","Seated cable row","Lat pulldown","Straight-arm pulldown","Face pull","Single-arm cable row","Cable lateral raise","Cable upright row","Cable shrug"],
- "Arms":["Cable curl","Rope hammer curl","High cable curl","Tricep pushdown","Rope pushdown","Overhead cable extension","Single-arm pushdown"]
+ "Biceps":{bw:["Chin-ups","Close-grip chin-ups","TRX curl"],
+   mach:["Cable curl","Machine bicep curl","Machine preacher curl","Rope hammer curl","High cable curl"],
+   free:["Barbell curl","Bar curl","EZ-bar curl","DB curl","Hammer curl","Concentration curl","Preacher curl","Incline DB curl","Mace curl"],
+   band:["Band curl","Band hammer curl"]},
+ "Triceps":{bw:["Dips","Bench dips","Diamond pushups","TRX tricep extension"],
+   mach:["Tricep pushdown","Rope pushdown","Rope overhead extension","Machine dip","Machine tricep extension"],
+   free:["Overhead extension","Skull crushers","Bar extension","Close-grip bench","Kickbacks","DB overhead extension"],
+   band:["Band pushdown","Band overhead extension"]},
+ "Shoulders":{bw:["Pike pushups","Handstand pushups","Wall walks","Plank shoulder taps"],
+   mach:["Machine shoulder press","Smith machine press","Cable lateral raise","Reverse pec deck","Cable face pull"],
+   free:["DB military press","Barbell overhead press","Arnold press","Lateral raise","Front raise","Rear delt fly","Upright row","Shrugs","Mace 360s","Mace 10-to-2"],
+   band:["Band face pull","Band lateral raise","Band overhead press"]},
+ "Abs":{bw:["Crunch","Side crunch","Leg lifts","Inverted crunch","Bicycles","Plank","Side plank","Spiderman plank","Hanging knee raise","Mountain climbers","Ab wheel","Dead bug","V-ups"],
+   mach:["Cable crunch","Ab crunch machine","Captain's chair leg raise","Cable woodchop","Cable Pallof press"],
+   free:["Russian twist","Weighted crunch","DB side bend","Weighted plank","Landmine twist"],
+   band:["Band Pallof press","Band woodchop"]},
+ "Chest":{bw:["Pushups","Wide pushups","Decline pushups","Incline pushups","Diamond pushups","Archer pushups","Dips"],
+   mach:["Machine chest press","Pec deck","Smith machine bench","Cable crossover","Low-to-high cable fly"],
+   free:["Bench press","Incline bench","DB bench","Incline DB bench","Flys","DB flys","DB pullover"],
+   band:["Band chest press","Band fly"]},
+ "Back":{bw:["Pullups","Chin-ups","TRX row","Inverted row","Superman"],
+   mach:["Lat pulldown","Seated cable row","Single-arm cable row","Straight-arm pulldown","Assisted pullup machine","T-bar row machine"],
+   free:["DB row","Barbell row","Pendlay row","Deadlift","Good mornings","Kettlebell swing"],
+   band:["Band row","Band pull-apart","Band lat pulldown"]},
+ "Quads":{bw:["Air squat","Jump squat","Pistol squat","Lunge","Walking lunge","Step-ups","Bulgarian split squat","Single-leg balance","Wall sit","Calf raise"],
+   mach:["Leg press","Hack squat","Smith machine squat","Leg extension","Leg curl","Seated calf raise"],
+   free:["Squat","Front squat","DB squat","Goblet squat","DB lunge","Romanian deadlift","DB calf raise"],
+   band:["Band squat","Band leg curl","Banded lateral walk"]},
+ "Push / Pull":{bw:["Pushups","Pullups","Inverted row","Dips"],
+   mach:["Cable crossover","Cable chest press","Low-to-high cable fly","Seated cable row","Lat pulldown","Straight-arm pulldown","Face pull","Single-arm cable row","Cable lateral raise","Cable upright row","Cable shrug","Machine chest press"],
+   free:["Bench press","DB bench","DB row","Barbell row"],
+   band:["Band chest press","Band row","Band face pull"]},
+ "Arms":{bw:["Chin-ups","Dips","Bench dips","Diamond pushups"],
+   mach:["Cable curl","Rope hammer curl","High cable curl","Tricep pushdown","Rope pushdown","Overhead cable extension","Single-arm pushdown","Machine preacher curl"],
+   free:["Barbell curl","DB curl","Hammer curl","Skull crushers","Overhead extension"],
+   band:["Band curl","Band pushdown"]}
 };
-function opts(gn,list){const seen=new Set(),out=[];for(const n of [...list.map(e=>e.n),...(POOLS[gn]||[])])if(!seen.has(n)){seen.add(n);out.push(n)}return out}
+// [[label,[names]]...] for one group's dropdown; any plan default not in the pool lands in "Other"
+function opts(gn,list){const pool=POOLS[gn]||{},seen=new Set(),out=[];
+  for(const [k,l] of KINDS){const ns=(pool[k]||[]).filter(n=>!seen.has(n)&&seen.add(n));if(ns.length)out.push([l,ns])}
+  const rest=list.map(e=>e.n).filter(n=>!seen.has(n)&&seen.add(n));if(rest.length)out.push(["Other",rest]);
+  return out}
 const exName=(e,x)=>(x&&x.n)||e.n;
 const MAXES=[["bench","Bench"],["row","Back row"],["curl","Curl"],["tripd","Tri pushdown"],["mp","Military press"],["trap","Trap shrug"],["dl","Deadlift"],["legce","Leg curl/ext"],["pushups","Pushups"],["pullups","Pullups"]];
 const BW=new Set(["pushups","pullups"]);
@@ -61,9 +94,13 @@ try{const s=localStorage.getItem("zeo-dirty");if(s)dirty=new Set(JSON.parse(s)||
 
 function W(k){k=k||wk;if(!weeks[k])weeks[k]={start:k,days:{},maxes:{},notes:{}};const w=weeks[k];w.days=w.days||{};w.maxes=w.maxes||{};w.notes=w.notes||{};return w}
 function D(i){const w=W();w.days[i]=w.days[i]||{ex:{},hab:{}};w.days[i].ex=w.days[i].ex||{};w.days[i].hab=w.days[i].hab||{};return w.days[i]}
-function allEx(i){return PLAN[i].g.flatMap(g=>g[1])}
-function dayPct(w,i){const ex=allEx(i);if(!ex.length)return null;const d=(w.days||{})[i];if(!d||!d.ex)return 0;return Math.round(100*ex.filter(e=>d.ex[e.id]&&d.ex[e.id].done).length/ex.length)}
-function volume(w){let v=0;for(const i in (w.days||{})){const ex=w.days[i].ex||{};for(const id in ex){const x=ex[id];v+=(+x.w||0)*(+x.r||0)*(+x.s||0)}}return v}
+// The workout done on day i: the day's own pick (d.plan, a PLAN key) or the scheduled one
+function planOf(w,i){const d=w&&w.days&&w.days[i];const p=d&&d.plan;return PLAN[p!=null&&PLAN[p]?p:i]}
+function allEx(i,w){return planOf(w||W(),i).g.flatMap(g=>g[1])}
+function dayPct(w,i){const ex=allEx(i,w);if(!ex.length)return null;const d=(w.days||{})[i];if(!d||!d.ex)return 0;return Math.round(100*ex.filter(e=>d.ex[e.id]&&d.ex[e.id].done).length/ex.length)}
+// Only exercises in the day's current workout count, so entries left from a workout you switched away from don't inflate volume
+function dayVol(w,i){const d=(w.days||{})[i];if(!d||!d.ex)return 0;let v=0;for(const e of allEx(i,w)){const x=d.ex[e.id];if(x)v+=(+x.w||0)*(+x.r||0)*(+x.s||0)}return v}
+function volume(w){let v=0;for(let i=0;i<7;i++)v+=dayVol(w,i);return v}
 
 function persist(){try{localStorage.setItem("zeo-weeks",JSON.stringify(weeks));localStorage.setItem("zeo-dirty",JSON.stringify([...dirty]))}catch(e){}}
 function save(k){k=k||wk;if(weeks[k])weeks[k].u=Date.now();dirty.add(k);persist();
@@ -75,22 +112,27 @@ function renderStrip(){
   const s=parse(wk),w=weeks[wk]||{days:{}},tIso=iso(today);
   $("wkLbl").textContent=fmt(s)+" – "+fmt(addD(s,6));
   $("strip").innerHTML=DAYS.map((n,i)=>{const p=dayPct(w,i);const d=addD(s,i);
-    return `<button class="day ${p===100?"full":""} ${iso(d)===tIso?"istoday":""}" style="--c:${C[PLAN[i].k]}" data-i="${i}" aria-pressed="${i===sel}" aria-label="${PLAN[i].t}, ${fmt(d)}">
+    const pl=planOf(w,i);
+    return `<button class="day ${p===100?"full":""} ${iso(d)===tIso?"istoday":""}" style="--c:${C[pl.k]}" data-i="${i}" aria-pressed="${i===sel}" aria-label="${pl.t}, ${fmt(d)}">
     <span class="dt">${d.getDate()}</span><span class="dn">${n}</span><span class="pc num">${p===null?"off":p+"%"}</span></button>`}).join("");
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function renderDay(){
-  const p=PLAN[sel],d=D(sel),date=addD(parse(wk),sel);
+  const d=D(sel),p=planOf(W(),sel),date=addD(parse(wk),sel);
+  const pk=d.plan!=null&&PLAN[d.plan]?+d.plan:sel;
+  const pickW=`<label class="pick">Workout <select id="plan-${sel}" data-plan aria-label="Workout for ${DAYS[sel]}">${Object.keys(PLAN).map(k=>
+    `<option value="${k}" ${+k===pk?"selected":""}>${esc(PLAN[k].t)} · ${esc(PLAN[k].sub)}${+k===sel?" (scheduled)":""}</option>`).join("")}</select></label>`;
   let h=`<div class="dayhead" style="--c:${C[p.k]}"><div><span class="tag">${DAYS[sel]} · ${fmt(date)} · ${esc(p.sub)}</span><h2>${esc(p.t)}</h2></div>
-   <div class="meta" id="dayMeta"></div></div>`;
-  if(!p.g.length)h+=`<div class="rest">Saturday is off. Log any cardio or habits below if you want the streak.</div>`;
+   <div class="meta" id="dayMeta"></div></div>${pickW}`;
+  if(!p.g.length)h+=`<div class="rest">Rest day. Log any cardio or habits below if you want the streak, or pick a workout above.</div>`;
   for(const [gn,list] of p.g){
     h+=`<div class="group"><h3>${esc(gn)}</h3><div class="ledger"><div class="ex head"><span></span><span style="text-align:left">Exercise</span><span>lb</span><span>Reps</span><span>Sets</span></div>`;
     const choices=opts(gn,list);
     for(const e of list){const x=d.ex[e.id]||{};const key=sel+"-"+e.id;const cur=exName(e,x);const custom=!!x.c;
+      const ch=custom||choices.some(c=>c[1].includes(cur))?choices:[...choices,["Saved",[cur]]];
       h+=`<div class="ex ${x.done?"done":""}" data-ex="${e.id}">
       <input type="checkbox" class="chk" id="c-${key}" ${x.done?"checked":""} aria-label="Done: ${esc(cur)}">
-      <div class="name"><select id="n-${key}" data-n aria-label="Exercise">${choices.map(n=>`<option ${!custom&&n===cur?"selected":""}>${esc(n)}</option>`).join("")}<option value="__custom" ${custom?"selected":""}>Custom…</option></select>
+      <div class="name"><select id="n-${key}" data-n aria-label="Exercise">${ch.map(([l,ns])=>`<optgroup label="${esc(l)}">${ns.map(n=>`<option ${!custom&&n===cur?"selected":""}>${esc(n)}</option>`).join("")}</optgroup>`).join("")}<option value="__custom" ${custom?"selected":""}>Custom…</option></select>
       <input type="text" class="custom" id="t-${key}" data-t value="${custom?esc(x.n||""):""}" placeholder="Type your exercise" aria-label="Custom exercise name" ${custom?"":"hidden"}>
       <i>${esc(e.t)}</i></div>
       <input type="number" inputmode="decimal" min="0" step="2.5" id="w-${key}" data-f="w" value="${x.w??""}" placeholder="BW" aria-label="${esc(e.n)} weight">
@@ -103,7 +145,7 @@ function renderDay(){
     <div class="group"><h3>Notes</h3><textarea id="note-${sel}" placeholder="How it felt, what to bump next week…">${esc(W().notes[sel]||"")}</textarea></div>`;
   $("dayView").innerHTML=h;renderMeta();
 }
-function renderMeta(){const p=dayPct(W(),sel);const d=D(sel);let v=0;for(const id in d.ex){const x=d.ex[id];v+=(+x.w||0)*(+x.r||0)*(+x.s||0)}
+function renderMeta(){const p=dayPct(W(),sel);const v=dayVol(W(),sel);
   const m=$("dayMeta");if(m)m.innerHTML=p===null?"":`<span class="num">${p}%</span> done · <span class="num">${v.toLocaleString()}</span> lb volume`}
 
 function renderMaxes(){
@@ -132,7 +174,7 @@ function renderCharts(){
   const lw=lastWeeks(10);
   const vol=lw.map(([k,w])=>[k,w?volume(w):0]);
   $("volChart").innerHTML=vol.some(v=>v[1])?bars(vol,kfmt,"lb"):`<div class="empty">Log weight, reps and sets on any day and weekly volume shows up here.</div>`;
-  const comp=lw.map(([k,w])=>[k,w?[0,1,2,3,4,5].filter(i=>dayPct(w,i)===100).length:0]);
+  const comp=lw.map(([k,w])=>[k,w?[0,1,2,3,4,5,6].filter(i=>dayPct(w,i)===100).length:0]);
   $("compChart").innerHTML=comp.some(v=>v[1])?bars(comp.map(c=>[c[0],c[1]]),v=>String(Math.round(v*10)/10),"sessions").replace(/>(\d)\.\d+</g,">$1<"):`<div class="empty">Check off every exercise on a day to count it as a full session (6 per week).</div>`;
   const lift=$("liftSel").value||"bench";const bw=BW.has(lift);
   const pts=lw.map(([k,w],i)=>{const m=w&&w.maxes&&w.maxes[lift];const v=m?(bw?(+m.r||0):e1rm(+m.w,+m.r)):0;return [k,v,i]}).filter(p=>p[1]);
@@ -197,6 +239,7 @@ $("dayView").addEventListener("change",e=>{const t=e.target;
     if(t.value==="__custom"){x.c=true;x.n=txt.value.trim();txt.hidden=false;txt.focus()}
     else{delete x.c;txt.hidden=true;txt.value="";if(t.value===defaultEx(id).n)delete x.n;else x.n=t.value}
     save()}
+  else if(t.matches("select[data-plan]")){const d=D(sel);if(+t.value===sel)delete d.plan;else d.plan=+t.value;save();renderDay()}
   else if(t.classList.contains("chk")){const row=t.closest(".ex");const id=row.dataset.ex;const d=D(sel);d.ex[id]=d.ex[id]||{};d.ex[id].done=t.checked;row.classList.toggle("done",t.checked);save()}
   else if(t.dataset.h){D(sel).hab[t.dataset.h]=t.type==="checkbox"?t.checked:t.value;save()}});
 $("maxGrid").addEventListener("input",e=>{const t=e.target;if(!t.dataset.m)return;const w=W();w.maxes[t.dataset.m]=w.maxes[t.dataset.m]||{};
@@ -214,8 +257,9 @@ function csv(){const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.
   for(const k of Object.keys(weeks).sort()){const w=weeks[k];const s=parse(k);
     const bw=bwOf(w);if(bw){brows.push([k,bw,pbw?r1(bw-pbw):""]);pbw=bw}
     for(let i=0;i<7;i++){const d=(w.days||{})[i];const date=iso(addD(s,i));
-      for(const [gn,list] of PLAN[i].g)for(const e of list){const x=d&&d.ex&&d.ex[e.id];if(!x)continue;
-        rows.push([k,date,DAYS[i],PLAN[i].t,gn,exName(e,x)||"(custom)",e.t,x.w,x.r,x.s,(+x.w||0)*(+x.r||0)*(+x.s||0),x.done?"yes":"no"])}
+      const pl=planOf(w,i);
+      for(const [gn,list] of pl.g)for(const e of list){const x=d&&d.ex&&d.ex[e.id];if(!x)continue;
+        rows.push([k,date,DAYS[i],pl.t,gn,exName(e,x)||"(custom)",e.t,x.w,x.r,x.s,(+x.w||0)*(+x.r||0)*(+x.s||0),x.done?"yes":"no"])}
       const h=d&&d.hab||{};const note=(w.notes||{})[i];if(Object.keys(h).length||note)hrows.push([k,date,DAYS[i],h.cardio&&h.cardio!=="—"?h.cardio:"",h.noalc?"yes":"",h.nosweets?"yes":"",h.nocoffee?"yes":"",note||""])}
     for(const [mk,ml] of MAXES){const m=(w.maxes||{})[mk];if(m&&(m.w||m.r))mrows.push([k,ml,m.w,m.r,BW.has(mk)?"":e1rm(+m.w,+m.r)])}}
   return [rows,[],["HABITS"],...hrows,[],["WEEKLY MAXES"],...mrows,[],["BODY WEIGHT"],...brows].map(r=>r.map(q).join(",")).join("\n")}

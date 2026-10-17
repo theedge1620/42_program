@@ -70,7 +70,7 @@ It opens full-screen and works without signal at the gym.
 
 Edit files, bump `VERSION` in `sw.js` (e.g. `zeo-v2`), redeploy. Phones pick up the new version the next time they open the app online.
 
-To change the workout plan, edit `PLAN` near the top of `app.js` (day number 0 = Sunday). Exercise dropdown choices live in `POOLS`. Keep existing exercise names stable if you want old entries to stay attached to them — each row's saved data is keyed by its default name.
+To change the workout plan, edit `PLAN` near the top of `app.js` (day number 0 = Sunday). Each day's **Workout** dropdown lets you swap in any workout from `PLAN` for that day (saved per day; the scheduled one is the default). Exercise dropdown choices live in `POOLS`, grouped by equipment (`bw` bodyweight, `mach` machine/cable, `free` free weight, `band` bands). Keep existing exercise names stable if you want old entries to stay attached to them — each row's saved data is keyed by its default name.
 
 ## Running without sync
 
