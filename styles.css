@@ -8,6 +8,7 @@ img{max-width:100%}
   --bg:#eef1f4; --surface:#ffffff; --sunk:#e3e8ee; --ink:#18212b; --muted:#5b6774; --line:#cfd7e0;
   --accent:#1f5fbf; --accent-ink:#ffffff;
   --p-red:#c8372d; --p-blue:#1f5fbf; --p-yellow:#c99a06; --p-green:#2f8a4a; --p-grey:#7b8794;
+  --p-orange:#c4621a; --p-purple:#7a4fc0; --p-teal:#13827f;
   --good:#2f8a4a;
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -16,11 +17,11 @@ img{max-width:100%}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#11161c; --surface:#19212a; --sunk:#0d1217; --ink:#e6ebf0; --muted:#93a0ad; --line:#2c3743;
   --accent:#5b97ee; --accent-ink:#0d1217;
-  --p-red:#ec6a5f; --p-blue:#5b97ee; --p-yellow:#e7bb34; --p-green:#5cc07a; --p-grey:#8d99a6; --good:#5cc07a; color-scheme:dark}}
+  --p-red:#ec6a5f; --p-blue:#5b97ee; --p-yellow:#e7bb34; --p-green:#5cc07a; --p-grey:#8d99a6; --p-orange:#f0954f; --p-purple:#ad8bf0; --p-teal:#4cc4c0; --good:#5cc07a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11161c; --surface:#19212a; --sunk:#0d1217; --ink:#e6ebf0; --muted:#93a0ad; --line:#2c3743;
   --accent:#5b97ee; --accent-ink:#0d1217;
-  --p-red:#ec6a5f; --p-blue:#5b97ee; --p-yellow:#e7bb34; --p-green:#5cc07a; --p-grey:#8d99a6; --good:#5cc07a; color-scheme:dark}
+  --p-red:#ec6a5f; --p-blue:#5b97ee; --p-yellow:#e7bb34; --p-green:#5cc07a; --p-grey:#8d99a6; --p-orange:#f0954f; --p-purple:#ad8bf0; --p-teal:#4cc4c0; --good:#5cc07a; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
 .wrap{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
@@ -40,7 +41,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 
 .strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px}
 .day{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 4px 7px;text-align:center;position:relative;overflow:hidden}
-.day::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c)}
+.day::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg,var(--c) 50%,var(--c2,var(--c)) 50%)}
 .day .dn{font-family:var(--f-display);font-weight:700;font-size:16px;text-transform:uppercase;display:block;margin-top:2px}
 .day .dt{font-size:11px;color:var(--muted);display:block}
 .day .pc{font-size:11px;display:block;margin-top:3px;color:var(--muted)}
@@ -52,8 +53,15 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .dayhead h2{font-size:34px;font-weight:800;line-height:1}
 .dayhead .tag{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--c);margin-bottom:4px}
 .dayhead .meta{color:var(--muted);font-size:13px}
-.pick{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.pick select{flex:1;min-width:0;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 8px;color:var(--ink);font:inherit;font-size:14px;font-weight:500;letter-spacing:0;text-transform:none;cursor:pointer}
+.pick{border:0;margin:0 0 4px;padding:0;min-width:0}
+.pick legend{padding:0;margin-bottom:6px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pick legend span{letter-spacing:0;text-transform:none;font-weight:500}
+.pill.wo{border-left:4px solid var(--c)}
+.pill.wo:has(input:checked){background:color-mix(in srgb,var(--c) 14%,var(--surface));border-color:var(--c)}
+.pill.wo:has(input:disabled){opacity:.5;cursor:not-allowed}
+.pill.wo input{accent-color:var(--c)}
+.linkbtn{background:none;border:0;padding:6px 4px;color:var(--accent);font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.wohead{margin-top:22px;padding-left:10px;border-left:4px solid var(--c);font-family:var(--f-display);font-size:22px;font-weight:800;text-transform:uppercase;line-height:1.1}
 .ex .name select optgroup{font-style:normal;font-weight:600;color:var(--muted);background:var(--surface)}
 
 .group{margin-top:16px}
