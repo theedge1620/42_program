@@ -239,7 +239,7 @@ function renderBWHist(){
   $("bwHist").innerHTML=`<table class="hist"><thead><tr><th>Week of</th><th>Weight (lb)</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-/* fasting: each fast is {s,e} (ms) in w.fasts of the week it started in, so it syncs and backs up with that week; e is missing while it runs */
+/* fasting: each fast is {s,e,g} (ms, goal hours) in w.fasts of the week it started in, so it syncs and backs up with that week; e is missing while it runs */
 const HR=36e5;
 const p2=n=>String(n).padStart(2,"0");
 const wkOf=ms=>iso(sunday(new Date(ms)));
@@ -259,16 +259,26 @@ function fastHours(k){const s=parse(k),fs=allFasts(),now=Date.now(),out=[];
 function badStart(ms){if(!ms)return "Enter a valid date and time.";if(ms>Date.now()+6e4)return "That time is in the future.";
   const last=allFasts().filter(([,f])=>f.e).pop();
   return last&&ms<last[1].e?"That's before your last fast ended ("+when(last[1].e)+").":null}
+// Goal in whole hours: saved on each fast as g (so it syncs); the picker's last choice seeds the next fast
+const GOALS=Array.from({length:61},(_,i)=>12+i);
+let goalPref=20;try{const g=+localStorage.getItem("zeo-fast-goal");if(GOALS.includes(g))goalPref=g}catch(e){}
+const goalOf=f=>(f&&GOALS.includes(f.g))?f.g:goalPref;
+const goalSel=g=>`<label>Goal<select id="fastGoal">${GOALS.map(h=>`<option value="${h}" ${h===g?"selected":""}>${h} h</option>`).join("")}</select></label>`;
+// Red until the goal is reached, then blue; keeps counting until ended
+function tickFast(a){const c=$("fastClock"),l=$("fastLeft");if(!c||!a)return;
+  const f=a[1],g=goalOf(f),el=Date.now()-f.s,met=el>=g*HR;
+  c.textContent=clock(el);c.classList.toggle("met",met);
+  if(l)l.textContent=met?"Goal of "+g+" h reached "+when(f.s+g*HR):dur(g*HR-el)+" to go · goal "+g+" h"}
 function renderFast(){const a=activeFast(),now=Date.now();
   if(a){const f=a[1];
     $("fastTag").textContent="Fasting since "+when(f.s);
-    $("fastBody").innerHTML=`<div class="clock num" id="fastClock" role="timer">${clock(now-f.s)}</div>
-     <div class="fastctl"><label>Started<input type="datetime-local" id="fastStart" value="${dtl(f.s)}" max="${dtl(now)}"></label>
-     <button class="btn primary" id="fastEnd">End fast</button></div>`;return}
+    $("fastBody").innerHTML=`<div class="fastnow"><div class="clock num" id="fastClock" role="timer">${clock(now-f.s)}</div><div class="fastleft" id="fastLeft"></div></div>
+     <div class="fastctl">${goalSel(goalOf(f))}<label>Started<input type="datetime-local" id="fastStart" value="${dtl(f.s)}" max="${dtl(now)}"></label>
+     <button class="btn primary" id="fastEnd">End fast</button></div>`;tickFast(a);return}
   const last=allFasts().filter(([,f])=>f.e).pop();
   $("fastTag").textContent=last?"Last fast "+dur(last[1].e-last[1].s)+", ended "+when(last[1].e):"Not fasting";
-  $("fastBody").innerHTML=`<div class="clock num idle" id="fastClock">${clock(0)}</div>
-   <div class="fastctl"><label>Already started? Set the time<input type="datetime-local" id="fastAt" max="${dtl(now)}"></label>
+  $("fastBody").innerHTML=`<div class="fastnow"><div class="clock num idle" id="fastClock">${clock(0)}</div><div class="fastleft" id="fastLeft">Goal ${goalPref} h</div></div>
+   <div class="fastctl">${goalSel(goalPref)}<label>Already started? Set the time<input type="datetime-local" id="fastAt" max="${dtl(now)}"></label>
    <button class="btn primary" id="fastGo">Start now</button></div>`}
 function renderFastWeek(){
   const s=parse(wk),hrs=fastHours(wk),tIso=iso(new Date()),a=+s,b=+addD(s,7),now=Date.now();
@@ -325,8 +335,11 @@ $("fast").addEventListener("input",e=>{if(e.target.id!=="fastAt")return;const v=
   $("fastGo").textContent=v?"Start from "+when(+new Date(v)):"Start now"});
 $("fast").addEventListener("click",e=>{const id=e.target.id;
   if(id==="fastGo"){const v=$("fastAt").value,ms=v?+new Date(v):Date.now(),bad=badStart(ms);if(bad){toast(bad);return}
-    if(activeFast())return;const k=wkOf(ms);FA(k).push({s:ms});save(k);fastChanged();toast("Fast started")}
+    if(activeFast())return;const k=wkOf(ms);FA(k).push({s:ms,g:goalPref});save(k);fastChanged();toast("Fast started")}
   else if(id==="fastEnd"){const a=activeFast();if(!a)return;a[1].e=Date.now();save(a[0]);fastChanged();toast("Fast ended: "+dur(a[1].e-a[1].s))}});
+$("fast").addEventListener("change",e=>{if(e.target.id!=="fastGoal")return;const a=activeFast();
+  goalPref=+e.target.value;try{localStorage.setItem("zeo-fast-goal",goalPref)}catch(err){}
+  if(a){a[1].g=goalPref;save(a[0]);tickFast(a)}else $("fastLeft").textContent="Goal "+goalPref+" h"});
 $("fast").addEventListener("change",e=>{if(e.target.id!=="fastStart")return;const a=activeFast();if(!a)return;
   const ms=+new Date(e.target.value),bad=badStart(ms);if(bad){toast(bad);renderFast();return}
   const [k,f]=a,nk=wkOf(ms);f.s=ms;
@@ -337,7 +350,7 @@ $("fastLog").addEventListener("click",e=>{const b=e.target.closest("[data-fdel]"
   weeks[k].fasts=weeks[k].fasts.filter(x=>x!==f);save(k);fastChanged()});
 // Tick the timer every second; refresh the week's hours once a minute while a fast runs
 let fastMin=0;
-setInterval(()=>{const a=activeFast();if(!a)return;const c=$("fastClock");if(c)c.textContent=clock(Date.now()-a[1].s);
+setInterval(()=>{const a=activeFast();if(!a)return;tickFast(a);
   const m=Math.floor(Date.now()/6e4);if(m!==fastMin){fastMin=m;renderFastWeek()}},1000);
 
 /* export */
@@ -346,10 +359,10 @@ function csv(){const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.
   const hrows=[["week_start","date","day","cardio","no_alcohol","no_sweets","no_coffee","notes"]];
   const mrows=[["week_start","lift","weight_lb","reps","e1rm_lb"]];
   const brows=[["week_start","body_weight_lb","change_lb"]];let pbw=0;
-  const frows=[["week_start","started","ended","hours"]];const stamp=ms=>dtl(ms).replace("T"," ");
+  const frows=[["week_start","started","ended","hours","goal_h"]];const stamp=ms=>dtl(ms).replace("T"," ");
   for(const k of Object.keys(weeks).sort()){const w=weeks[k];const s=parse(k);
     const bw=bwOf(w);if(bw){brows.push([k,bw,pbw?r1(bw-pbw):""]);pbw=bw}
-    for(const f of (w.fasts||[]).slice().sort((a,b)=>a.s-b.s))frows.push([k,stamp(f.s),f.e?stamp(f.e):"(running)",r1(((f.e||Date.now())-f.s)/HR)]);
+    for(const f of (w.fasts||[]).slice().sort((a,b)=>a.s-b.s))frows.push([k,stamp(f.s),f.e?stamp(f.e):"(running)",r1(((f.e||Date.now())-f.s)/HR),f.g||""]);
     for(let i=0;i<7;i++){const d=(w.days||{})[i];const date=iso(addD(s,i));
       const ex=d&&d.ex||{},out=new Set();
       for(const p of dayParts(w,i))for(const [gn,list] of p.g)for(const e of list){const x=ex[e.id];if(!x)continue;out.add(e.id);
