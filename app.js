@@ -239,8 +239,56 @@ function renderBWHist(){
   $("bwHist").innerHTML=`<table class="hist"><thead><tr><th>Week of</th><th>Weight (lb)</th><th>Change</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+/* fasting: each fast is {s,e} (ms) in w.fasts of the week it started in, so it syncs and backs up with that week; e is missing while it runs */
+const HR=36e5;
+const p2=n=>String(n).padStart(2,"0");
+const wkOf=ms=>iso(sunday(new Date(ms)));
+const dtl=ms=>{const d=new Date(ms);return iso(d)+"T"+p2(d.getHours())+":"+p2(d.getMinutes())};   // datetime-local value
+const clock=ms=>{const t=Math.max(0,Math.floor(ms/1000));return Math.floor(t/3600)+":"+p2(Math.floor(t/60)%60)+":"+p2(t%60)};
+const dur=ms=>{const m=Math.round(ms/6e4);return Math.floor(m/60)+"h "+p2(m%60)+"m"};
+const when=ms=>{const d=new Date(ms);return fmt(d)+", "+d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})};
+function FA(k){const w=W(k);return w.fasts=w.fasts||[]}
+function allFasts(){const out=[];for(const k in weeks)for(const f of weeks[k].fasts||[])out.push([k,f]);return out.sort((a,b)=>a[1].s-b[1].s)}
+function activeFast(){return allFasts().filter(([,f])=>!f.e).pop()}
+// Hours fasted on each day of week k, splitting fasts at midnight; a running fast counts up to now
+function fastHours(k){const s=parse(k),fs=allFasts(),now=Date.now(),out=[];
+  for(let i=0;i<7;i++){const a=+addD(s,i),b=+addD(s,i+1);let t=0;
+    for(const [,f] of fs)t+=Math.max(0,Math.min(f.e||now,b)-Math.max(f.s,a));out.push(t/HR)}
+  return out}
+// Problem with starting a fast at ms (null if fine): no future starts, no overlap with the last finished fast
+function badStart(ms){if(!ms)return "Enter a valid date and time.";if(ms>Date.now()+6e4)return "That time is in the future.";
+  const last=allFasts().filter(([,f])=>f.e).pop();
+  return last&&ms<last[1].e?"That's before your last fast ended ("+when(last[1].e)+").":null}
+function renderFast(){const a=activeFast(),now=Date.now();
+  if(a){const f=a[1];
+    $("fastTag").textContent="Fasting since "+when(f.s);
+    $("fastBody").innerHTML=`<div class="clock num" id="fastClock" role="timer">${clock(now-f.s)}</div>
+     <div class="fastctl"><label>Started<input type="datetime-local" id="fastStart" value="${dtl(f.s)}" max="${dtl(now)}"></label>
+     <button class="btn primary" id="fastEnd">End fast</button></div>`;return}
+  const last=allFasts().filter(([,f])=>f.e).pop();
+  $("fastTag").textContent=last?"Last fast "+dur(last[1].e-last[1].s)+", ended "+when(last[1].e):"Not fasting";
+  $("fastBody").innerHTML=`<div class="clock num idle" id="fastClock">${clock(0)}</div>
+   <div class="fastctl"><label>Already started? Set the time<input type="datetime-local" id="fastAt" max="${dtl(now)}"></label>
+   <button class="btn primary" id="fastGo">Start now</button></div>`}
+function renderFastWeek(){
+  const s=parse(wk),hrs=fastHours(wk),tIso=iso(new Date()),a=+s,b=+addD(s,7),now=Date.now();
+  $("fastWeek").innerHTML=DAYS.map((n,i)=>{const h=hrs[i];
+    return `<div class="fday ${iso(addD(s,i))===tIso?"istoday":""}" style="--h:${Math.min(1,h/24)}" title="${fmt(addD(s,i))}: ${r1(h)} h">
+      <span class="fh num">${h>=.05?r1(h):"–"}</span><div class="fbar"><i></i></div><span class="fdn">${n}</span></div>`}).join("");
+  const list=allFasts().filter(([,f])=>f.s<b&&(f.e||now)>a);
+  const total=hrs.reduce((x,y)=>x+y,0),longest=Math.max(0,...list.map(([,f])=>(f.e||now)-f.s));
+  const tile=(l,v,sub)=>`<div class="maxc"><label>${l}</label><div class="bwv num">${v}</div><div class="e1">${sub}</div></div>`;
+  $("fastStats").innerHTML=tile("Week total",r1(total)+" h","Avg "+r1(total/7)+" h / day")
+    +tile("Fasts",list.length,list.some(([,f])=>!f.e)?"One running now":"This week")
+    +tile("Longest",longest?dur(longest):"—",longest?"Single fast":"No fasts yet");
+  if(!list.length){$("fastLog").innerHTML=`<div class="empty">Tap Start in the Fasting panel at the top and this week's fasts show up here.</div>`;return}
+  $("fastLog").innerHTML=`<table class="hist"><thead><tr><th>Started</th><th>Ended</th><th>Length</th><th><span class="sr">Delete</span></th></tr></thead><tbody>${
+    list.slice().reverse().map(([k,f])=>`<tr${f.e?"":' aria-current="true"'}><td>${when(f.s)}</td><td>${f.e?when(f.e):"Running"}</td><td class="num">${dur((f.e||now)-f.s)}</td>
+      <td><button type="button" data-fdel="${k}|${f.s}" aria-label="Delete fast started ${when(f.s)}">Delete</button></td></tr>`).join("")}</tbody></table>`}
+function fastChanged(){renderFast();renderFastWeek()}
+
 function renderSide(){renderStrip();renderMeta();renderCharts();renderBWHist()}
-function renderAll(){renderStrip();renderDay();renderMaxes();renderBW();renderCharts()}
+function renderAll(){renderStrip();renderDay();renderMaxes();renderBW();renderCharts();fastChanged()}
 
 $("liftSel").innerHTML=MAXES.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
 $("liftSel").addEventListener("change",renderCharts);
@@ -273,6 +321,24 @@ $("maxGrid").addEventListener("input",e=>{const t=e.target;if(!t.dataset.m)retur
 $("maxGrid").addEventListener("change",renderMaxes);
 $("bwIn").addEventListener("input",e=>{const w=W();const v=+e.target.value;if(v>0)w.bw=v;else delete w.bw;save()});
 $("bwHist").addEventListener("click",e=>{const b=e.target.closest("[data-wk]");if(!b)return;wk=b.dataset.wk;renderAll();$("bwIn").focus()});
+$("fast").addEventListener("input",e=>{if(e.target.id!=="fastAt")return;const v=e.target.value;
+  $("fastGo").textContent=v?"Start from "+when(+new Date(v)):"Start now"});
+$("fast").addEventListener("click",e=>{const id=e.target.id;
+  if(id==="fastGo"){const v=$("fastAt").value,ms=v?+new Date(v):Date.now(),bad=badStart(ms);if(bad){toast(bad);return}
+    if(activeFast())return;const k=wkOf(ms);FA(k).push({s:ms});save(k);fastChanged();toast("Fast started")}
+  else if(id==="fastEnd"){const a=activeFast();if(!a)return;a[1].e=Date.now();save(a[0]);fastChanged();toast("Fast ended: "+dur(a[1].e-a[1].s))}});
+$("fast").addEventListener("change",e=>{if(e.target.id!=="fastStart")return;const a=activeFast();if(!a)return;
+  const ms=+new Date(e.target.value),bad=badStart(ms);if(bad){toast(bad);renderFast();return}
+  const [k,f]=a,nk=wkOf(ms);f.s=ms;
+  if(nk!==k){weeks[k].fasts=weeks[k].fasts.filter(x=>x!==f);FA(nk).push(f);save(k)}   // keep each fast in the week it started
+  save(nk);fastChanged()});
+$("fastLog").addEventListener("click",e=>{const b=e.target.closest("[data-fdel]");if(!b)return;const [k,s]=b.dataset.fdel.split("|");
+  const f=(weeks[k].fasts||[]).find(x=>x.s===+s);if(!f||!confirm("Delete the fast started "+when(f.s)+"?"))return;
+  weeks[k].fasts=weeks[k].fasts.filter(x=>x!==f);save(k);fastChanged()});
+// Tick the timer every second; refresh the week's hours once a minute while a fast runs
+let fastMin=0;
+setInterval(()=>{const a=activeFast();if(!a)return;const c=$("fastClock");if(c)c.textContent=clock(Date.now()-a[1].s);
+  const m=Math.floor(Date.now()/6e4);if(m!==fastMin){fastMin=m;renderFastWeek()}},1000);
 
 /* export */
 function csv(){const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
@@ -280,8 +346,10 @@ function csv(){const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.
   const hrows=[["week_start","date","day","cardio","no_alcohol","no_sweets","no_coffee","notes"]];
   const mrows=[["week_start","lift","weight_lb","reps","e1rm_lb"]];
   const brows=[["week_start","body_weight_lb","change_lb"]];let pbw=0;
+  const frows=[["week_start","started","ended","hours"]];const stamp=ms=>dtl(ms).replace("T"," ");
   for(const k of Object.keys(weeks).sort()){const w=weeks[k];const s=parse(k);
     const bw=bwOf(w);if(bw){brows.push([k,bw,pbw?r1(bw-pbw):""]);pbw=bw}
+    for(const f of (w.fasts||[]).slice().sort((a,b)=>a.s-b.s))frows.push([k,stamp(f.s),f.e?stamp(f.e):"(running)",r1(((f.e||Date.now())-f.s)/HR)]);
     for(let i=0;i<7;i++){const d=(w.days||{})[i];const date=iso(addD(s,i));
       const ex=d&&d.ex||{},out=new Set();
       for(const p of dayParts(w,i))for(const [gn,list] of p.g)for(const e of list){const x=ex[e.id];if(!x)continue;out.add(e.id);
@@ -291,7 +359,7 @@ function csv(){const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.
         rows.push([k,date,DAYS[i],"(other)","",x.n||(e?e.n:id.replace(/-/g," ")),e?e.t:"",x.w,x.r,x.s,(+x.w||0)*(+x.r||0)*(+x.s||0),x.done?"yes":"no"])}
       const h=d&&d.hab||{};const note=(w.notes||{})[i];if(Object.keys(h).length||note)hrows.push([k,date,DAYS[i],h.cardio&&h.cardio!=="—"?h.cardio:"",h.noalc?"yes":"",h.nosweets?"yes":"",h.nocoffee?"yes":"",note||""])}
     for(const [mk,ml] of MAXES){const m=(w.maxes||{})[mk];if(m&&(m.w||m.r))mrows.push([k,ml,m.w,m.r,BW.has(mk)?"":e1rm(+m.w,+m.r)])}}
-  return [rows,[],["HABITS"],...hrows,[],["WEEKLY MAXES"],...mrows,[],["BODY WEIGHT"],...brows].map(r=>r.map(q).join(",")).join("\n")}
+  return [rows,[],["HABITS"],...hrows,[],["WEEKLY MAXES"],...mrows,[],["BODY WEIGHT"],...brows,[],["FASTING"],...frows].map(r=>r.map(q).join(",")).join("\n")}
 function offer(filename,data,type){
   try{const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return}catch(e){}
   const m=document.createElement("div");m.className="modal";m.innerHTML=`<div class="box"><h3>${filename}</h3><p class="sub" style="margin:0;color:var(--muted)">Downloads aren't available here. Copy the text and paste it into a file named ${filename}.</p><textarea id="expText" readonly></textarea><div class="actions"><button class="btn primary" id="cpy">Copy</button><button class="btn" id="cls">Close</button></div></div>`;

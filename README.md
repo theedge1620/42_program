@@ -72,6 +72,8 @@ Edit files, bump `VERSION` in `sw.js` (e.g. `zeo-v2`), redeploy. Phones pick up 
 
 Workouts live in `WORKOUTS` near the top of `app.js`; `SCHED` sets the default one or two workouts for each weekday (0 = Sunday, `[]` = rest). Each day's **Workouts** checkboxes let you pick up to two for that day (saved per day; **Back to schedule** restores the default). An exercise that's in both picked workouts shows once. Exercise dropdown choices live in `POOLS`, grouped by equipment (`bw` bodyweight, `mach` machine/cable, `free` free weight, `band` bands). Keep existing exercise names stable if you want old entries to stay attached to them — each row's saved data is keyed by its default name.
 
+**Fasting:** the panel under the header runs a live timer. Tap **Start** to begin now, or set **Already started?** to a past time first. While a fast runs you can still correct its start time. **Fasting this week** near the bottom shows hours fasted per day for the week you're viewing (a fast crossing midnight is split between the days) and lists those fasts so you can delete any mistakes. Each fast is stored in the week it started (`fasts: [{s, e}]`, ms timestamps; `e` is missing while it runs), so it syncs and backs up with that week.
+
 ## Running without sync
 
 Leave both values in `config.js` blank. Everything still works; data stays in that one browser, and Export/Import moves it between devices by hand.

@@ -34,6 +34,11 @@
     <div class="strip" id="strip"></div>
   </header>
 
+  <section class="fast" id="fast" aria-labelledby="fastH">
+    <div class="fasthead"><h2 id="fastH">Fasting</h2><span class="tag" id="fastTag"></span></div>
+    <div id="fastBody"></div>
+  </section>
+
   <main id="dayView"></main>
 
   <section class="block">
@@ -61,6 +66,14 @@
       <div class="chart"><div class="ch"><h3>Sessions done</h3></div><div id="compChart"></div></div>
       <div class="chart"><div class="ch"><h3>Body weight</h3></div><div id="bwChart"></div></div>
     </div>
+  </section>
+
+  <section class="block" id="fasting">
+    <h2>Fasting this week</h2>
+    <p class="sub">Hours fasted each day of the week shown at the top. A fast that runs past midnight counts toward both days.</p>
+    <div class="fastweek" id="fastWeek"></div>
+    <div class="maxgrid faststats" id="fastStats"></div>
+    <div class="bwhist" id="fastLog"></div>
   </section>
 
   <section class="block" id="sync">

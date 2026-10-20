@@ -1,6 +1,6 @@
 // Offline shell: serve the app from cache when there's no signal at the gym.
 // Bump VERSION whenever you deploy changed files so phones pick up the update.
-const VERSION = "zeo-v4";
+const VERSION = "zeo-v5";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "config.js", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", e => {
